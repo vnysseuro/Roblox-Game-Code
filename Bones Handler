@@ -1,0 +1,56 @@
+local Class = {}
+Class.__index = Class
+setmetatable({}, Class)
+
+local Players = game:FindService("Players") or game:GetService("Players")
+local BonesInfo = require(game.ReplicatedStorage.Shared.BonesInfo)
+
+--> Bones Setup
+function Class:Initialize()
+	for Index, Chunk in workspace.Utils.Bones:GetChildren() do
+		Chunk.Name = `Chunk_{Index}`
+		
+		local IndexColor = BonesInfo[Chunk:GetAttribute("Type")].Color
+		local Randomize = math.random(-25,25)/255
+		local NewColor = Color3.new(IndexColor.R+Randomize, IndexColor.G+Randomize, IndexColor.B+Randomize)
+		
+		Chunk:SetAttribute("RealColor", NewColor)
+		
+		for _, Bone in Chunk:GetDescendants() do
+			if Bone:IsA("BasePart") then
+				Bone.Color = NewColor
+			end
+		end
+		
+		local RandomAngles = CFrame.Angles(math.rad(math.random(-100,100)/35),math.rad(math.random(-100,100)/100),math.rad(math.random(-100,100)/100))
+		Chunk.Bones:PivotTo(Chunk.Bones:GetPivot() * RandomAngles)
+	end
+end
+
+--> Checking for near players to not spawn new bones in the same position
+function CheckNearPlayers(Object)
+	for _, Player in Players:GetPlayers() do
+		if Player.Character then
+			local Distance = (Player.Character:GetPivot().Position - Object:GetPivot().Position).Magnitude
+			if Distance < 30 then
+				return true
+			end
+		end
+	end
+	
+	 return false
+end
+
+--> Respawning the bones
+function Class:Respawn(Object)
+	task.delay(10, function()
+		if CheckNearPlayers(Object) then
+			self:Respawn(Object)
+		else
+			Object:SetAttribute("Health", Object:GetAttribute("MaxHealth"))
+			Object.Parent = workspace.Utils.Bones
+		end
+	end)
+end
+
+return Class
