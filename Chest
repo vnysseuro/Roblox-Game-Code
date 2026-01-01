@@ -1,0 +1,10 @@
+local ChestsHandler = require(game.ServerScriptService.Classes.ChestsHandler)
+local Packet = require(game.ReplicatedStorage.Librarys.Packet)
+local OpenChest = Packet("OpenChest", Packet.Any)
+
+OpenChest.OnServerEvent:Connect(function(Player, Event)
+	if Event == "Open" then
+		local Weapon = ChestsHandler:Open(Player)
+		OpenChest:FireClient(Player, {Weapon = Weapon})
+	end
+end)
