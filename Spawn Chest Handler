@@ -1,0 +1,107 @@
+local Class = {}
+Class.__index = Class
+setmetatable({}, Class)
+
+local Maximum = 128
+local Batch = 10
+local LuckSystem = require(game.ServerScriptService.Classes.LuckSystem)
+local Rarties = require(game.ReplicatedStorage.Shared.ChestsRarties)
+local UserInfo = require(game.ReplicatedStorage.Classes.UserInfo)
+
+--> Spawning chest
+function Class:Spawn()
+	if #workspace.Utils.Chests:GetChildren() < Maximum then
+		local Radius = workspace.Baseplate.Size/2
+		local RandomPosition = Vector3.new(math.random(-Radius.X,Radius.X),100,math.random(-Radius.Z,Radius.Z))
+
+		local Origin = RandomPosition
+		local Direction = Vector3.new(0,-125,0)
+		local NewRay = Ray.new(Origin, Direction)
+		
+		local Hitboxes = {}
+		
+		for _, Chunk in workspace.Utils.Bones:GetChildren() do
+			local Hitbox = Chunk:FindFirstChild("Hitbox")
+			
+			if Hitbox then
+				table.insert(Hitboxes, Hitbox)
+			end
+		end
+		
+		local Chunk, Hit = workspace:FindPartOnRayWithWhitelist(NewRay, Hitboxes)
+		
+		if Chunk then
+			local ChestType = Chunk:GetAttribute("Type") or "Common"
+			local CurrentChest = game.ReplicatedStorage.Chests:FindFirstChild(ChestType)
+			
+			if CurrentChest then
+				local NewChest = game.ReplicatedStorage.Chests:FindFirstChild(ChestType):Clone()
+				NewChest:PivotTo(CFrame.new(Hit+Vector3.new(0,NewChest:GetExtentsSize().Y/2,0)) * CFrame.Angles(0,math.rad(math.random(-360,360)),0))
+				NewChest.Parent = workspace.Utils.Chests
+
+				NewChest.Prompt.Triggered:Once(function(Player)
+					self:Claim(Player, NewChest)
+				end)
+			end
+		else
+			if #workspace.Utils.Chests:GetChildren() < Maximum then
+				if Batch > 0 then
+					Batch -= 1
+					self:Spawn()
+				else
+					task.wait()
+					Batch = 10
+				end
+			end
+		end
+	end
+end
+
+--> Claiming chest in data
+function Class:Claim(Player, Chest)
+	local Current = Player.playerstats.Chests:FindFirstChild(Chest.Name)
+	if Current then
+		Current.Value += 1
+		Chest:Destroy()
+	end
+end
+
+--> Getting Random weapon
+function Class:GetRandomWeapon(ChestRarity)	
+	local WeaponsArray = Rarties[ChestRarity]
+	
+	if WeaponsArray then
+		local Weapon = LuckSystem:GetRandomItem(WeaponsArray)
+		
+		return Weapon
+	end
+end
+
+--> Opening Chest
+function Class:Open(Player)
+	
+	local Chest = UserInfo.GetCurrentChest(Player)
+	
+	if Chest then
+		local RandomWeapon = self:GetRandomWeapon(Chest:GetAttribute("Rarity"))
+		print(RandomWeapon)
+		if RandomWeapon then
+			--> Adding to player's weapons
+			local NewWeaponSave = Instance.new("Configuration")
+			NewWeaponSave.Name = RandomWeapon.Weapon.Name
+			
+			for Attribute, Value in RandomWeapon.Weapon:GetAttributes() do
+				NewWeaponSave:SetAttribute(Attribute, Value)
+			end
+			
+			NewWeaponSave:SetAttribute("Size", math.floor(math.random(80,Chest:GetAttribute("MaximumSize")))/100)
+			NewWeaponSave.Parent = Player.playerstats.Weapons
+
+			--> Decreasing player chests amount
+			Chest.Value -= 1
+			return NewWeaponSave
+		end
+	end
+end
+
+return Class
