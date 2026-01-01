@@ -1,0 +1,48 @@
+--> Main & Services
+local Players = game:FindService("Players") or game:GetService("Players")
+
+--> Classes & Libraries
+local BackpackHandler = require(game.ServerScriptService.Classes.BackpackHandler)
+local System = require(game.ServerScriptService.Classes.WeaponSystem)
+local Packet = require(game.ReplicatedStorage.Librarys.Packet)
+
+--> Memory
+local Connections = {}
+local Weapons = {}
+
+--> Setting up packet
+local DamageEvent = Packet("Damage", Packet.Any, Packet.Any)
+
+--> Initializing player
+Players.PlayerAdded:Connect(function(Player)
+	
+	Weapons[Player.Name] = System.New(Player)
+	
+	Connections[Player.Name] = {}
+	Connections[Player.Name][#Connections[Player.Name]] = Player:WaitForChild("serverstats").Run.Changed:Connect(function()
+		if Player.serverstats.Run.Value then
+			BackpackHandler:CreateSwordToEquip(Player, Player.serverstats.EquippedWeapon.Value)
+			Weapons[Player.Name]:Initialize()
+		else
+			Weapons[Player.Name]:Reset()
+		end
+	end)
+end)
+
+--> Removing connections when player leaves
+Players.PlayerRemoving:Connect(function(Player)
+	for _, Connection in Connections[Player.Name] do
+		Connection:Disconnect()
+	end
+	
+	Connections[Player.Name] = nil
+end)
+
+--> Any Damage Event
+DamageEvent.OnServerEvent:Connect(function(Player, Message, Object)
+	if Message == "DamageBone" then
+		Weapons[Player.Name]:DamageBone(Object)
+	elseif Message == "DamagePlayer" then
+		Weapons[Player.Name]:DamagePlayer(Object)
+	end
+end)
