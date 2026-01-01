@@ -1,0 +1,31 @@
+local RunHandler = require(game.ServerScriptService.Classes.RunHandler)
+local Packet = require(game.ReplicatedStorage.Librarys.Packet)
+local RunEvent = Packet("RunEvent", Packet.Any)
+local RunPart = workspace.Utils.Parts.Start
+local StopPart = workspace.Utils.Parts.Stop
+local Levels = require(game.ReplicatedStorage.Shared.LevelsInfo)
+
+RunPart.Touched:Connect(function(Object)
+	local Player = game.Players:GetPlayerFromCharacter(Object.Parent)
+	if Player then
+		RunHandler.Start(Player)
+	end
+end)
+
+StopPart.Touched:Connect(function(Object)
+	local Player = game.Players:GetPlayerFromCharacter(Object.Parent)
+	if Player then
+		RunHandler.End(Player)
+	end
+end)
+
+RunEvent.OnServerEvent:Connect(function(Player, Action)
+	if Action == "End" then
+		RunHandler.End(Player)
+	elseif Action == "LevelUp" then
+		if Player.leaderstats.Bones.Value >= Levels[Player.leaderstats.Level.Value+1].Bones then
+			Player.leaderstats.Level.Value += 1
+		end
+	end
+end)
+
