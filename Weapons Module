@@ -1,0 +1,153 @@
+local Class = {}
+Class.__index = Class
+
+--> Services
+local Players = game:FindService("Players") or game:GetService("Players")
+
+function Class.New(Player)
+	local self = setmetatable({}, Class)
+	self.Player = Player
+	self.CanAttack = true
+	self.Combo = 1
+	self.SavedAnimations = {}
+	return self
+end
+
+--> Initializes the weapon
+function Class:Initialize()
+	local Character = self.Player.Character or self.Player.CharacterAdded:Wait()
+	local Weapon = self:GetWeapon()
+	
+	if Character and Weapon then
+		
+		--> Setting the weapon to the player & playing it's actions
+		self:SetWeapon()
+		
+		--> Scope
+		local Humanoid = Character:WaitForChild("Humanoid")
+
+		--> Inserting the tracks to my table
+		for _, Animation in Weapon.Animations:GetChildren() do
+			table.insert(self.SavedAnimations, Humanoid:LoadAnimation(Animation))
+		end
+		
+		--> Adding weapon cut power to my power
+		self.Player.serverstats.CutPower.Value += Weapon:GetAttribute("CutPower")
+
+		return "Done"
+	else
+		
+		return "Error"
+	end
+end
+
+--> Resets the weapon if exists
+function Class:Reset()
+	local Weapon = self:GetWeapon()
+	
+	if Weapon then
+		self.Player.serverstats.CutPower.Value -= Weapon:GetAttribute("CutPower")
+		Weapon:Destroy()
+	end
+end
+
+--> Setting the weapon, welding it & scaling it
+function Class:SetWeapon()
+	if not self:GetWeapon() then
+		local CurrentWeapon = game.ReplicatedStorage.Weapons:FindFirstChild(self.Player.serverstats.EquippedWeapon.Value)
+		
+		if CurrentWeapon then
+			
+			--> Getting new weapon
+			local NewWeapon = CurrentWeapon:Clone()
+			NewWeapon:ScaleTo(NewWeapon:GetAttribute("Size"))
+			
+			--> Creating weld
+			local WeldsFolder = Instance.new("Folder")
+			WeldsFolder.Name = "Welds"
+			WeldsFolder.Parent = NewWeapon
+			
+			--> Gripping the weld
+			local WeaponSize = NewWeapon.Handle.Size
+			NewWeapon.Grip *= CFrame.new(Vector3.new(0,-(WeaponSize.Y*1.5),0))
+			
+			--> Creating weld for all of the parts in the weapon
+			for _, Part in NewWeapon.Skin:GetChildren() do
+				if Part:IsA("BasePart") then
+					local NewWeld = Instance.new("WeldConstraint")
+					NewWeld.Name = Part.Name
+					NewWeld.Part0 = NewWeapon.Handle
+					NewWeld.Part1 = Part
+					NewWeld.Parent = WeldsFolder
+				end
+			end
+			
+			--> Adding the weapon to me
+			NewWeapon.Parent = self.Player.Character
+		end
+	end
+end
+
+--> Getting the weapon & checking for player
+function Class:GetWeapon()
+	if not self.Player.Character then return end
+	return self.Player.Character:FindFirstChildWhichIsA("Tool")
+end
+
+--> Damages only players
+function Class:DamagePlayer(Object)
+	local Weapon = self:GetWeapon()
+	
+	--> Checking for the weapon & my player health
+	if Weapon and self.Player.Character.Humanoid.Health > 0 then
+		local Humanoid = Object.Parent:FindFirstChild("Humanoid")
+		
+		--> Checking for damaged player health
+		if Humanoid and Humanoid.Health > 0 then
+			Humanoid.Health -= Weapon:GetAttribute("Damage")
+			
+			--> Checking if he's died
+			if Humanoid.Health <= 0 then
+				
+				--> Adding kill to my stats
+				self.Player.playerstats.Utils.Kills.Value += 1
+
+				--> Getting the killed player
+				local Killed = Players:GetPlayerFromCharacter(Object.Parent)
+				
+				--> Adding his bones to my bones if player exists
+				if Killed then
+					self.Player.leaderstats.Bones.Value += (Killed.leaderstats.Bones.Value*0.9)
+				end
+				
+			end
+		end
+	end
+end
+
+--> Damages only Bones
+function Class:DamageBone(Object)
+	local Weapon = self:GetWeapon()
+	
+	--> Checking for the weapon & my player health
+	if Weapon and self.Player.Character.Humanoid.Health > 0 then
+		
+		--> Checking if player has the required damage of the bone
+		if Object:GetAttribute("Requirement") <= self.Player.serverstats.CutPower.Value then
+			local Health = Object:GetAttribute("Health")
+			local Damage = self.Player.serverstats.CutPower.Value
+			
+			--> Damaging the bone
+			Object:SetAttribute("Health", Health - Damage)
+			
+			--> Checking if it's died
+			if Health - Damage <= 0 then
+				--> Parenting bone to spawn cache and adding it's reward to me
+				self.Player.leaderstats.Bones.Value += Object:GetAttribute("Reward")
+				Object.Parent = game.ReplicatedStorage.SpawnCache
+			end
+		end
+	end
+end
+
+return Class
