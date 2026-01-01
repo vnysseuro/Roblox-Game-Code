@@ -1,0 +1,47 @@
+local Class = {}
+Class.__index = Class
+
+--> Equipping the best weapon
+function Class:EquipBestWeapon(Player)
+	local BestWeapon
+	local BestPower = 0
+
+	for _, Weapon in Player.playerstats.Weapons:GetChildren() do
+		local CutPower = Weapon:GetAttribute("Size")
+		if CutPower > BestPower then
+			BestWeapon = Weapon
+			BestPower = CutPower
+		end
+	end
+
+	Player.serverstats.EquippedWeapon.Value = BestWeapon
+end
+
+--> Get the weapon from character
+function Class:GetEquippedSword(Player)
+	if not Player.Character then return end
+	return Player.Character:FindFirstChildWhichIsA("Tool")
+end
+
+--> Creating the sword to equip
+function Class:CreateSwordToEquip(Player, WeaponSave)
+	local WeaponModel = game.ReplicatedStorage.Weapons:FindFirstChild(WeaponSave.Name)
+	if not WeaponModel or not Player.Character then return end
+	
+	--> Coping Model
+	local NewWeapon = WeaponModel:Clone()
+	
+	--> Adding Attributes
+	for Attribute, Value in WeaponSave:GetAttributes() do
+		NewWeapon:SetAttribute(Attribute, Value)
+	end
+	
+	--> Removing holding sword
+	local EquippedSword = self:GetEquippedSword(Player)
+	if EquippedSword then EquippedSword:Destroy() end
+	
+	--> Adding new sword
+	NewWeapon.Parent = Player.Character
+end
+
+return Class
