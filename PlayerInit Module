@@ -1,0 +1,84 @@
+local Class = {}
+Class.__index = Class
+setmetatable({}, Class)
+
+local LevelInfo = require(game.ReplicatedStorage.Shared.LevelsInfo)
+local Connections = {}
+
+function Class:Setup(Player)
+	--> Adding starter items
+	for _, Object in game.ServerStorage.StarterItems:GetChildren() do
+		Object.Parent = Player
+	end
+	
+	--> Adding chests values
+	for _, Chest in game.ReplicatedStorage.Chests:GetChildren() do
+		local NewValue = Instance.new("IntValue")
+		NewValue.Name = Chest.Name
+		NewValue.Value = 0
+		NewValue:SetAttribute("Rarity", Chest:GetAttribute("Rarity"))
+		NewValue:SetAttribute("MaximumSize", Chest:GetAttribute("MaximumSize"))
+		NewValue.Parent = Player.playerstats.Chests
+	end
+	
+	--> Start leveling
+	local Leaderstats = Player.leaderstats
+	local Playerstats = Player.playerstats
+	local Serverstats = Player.serverstats
+	
+	Connections[Player] = {}
+	
+	local Character = Player.Character or Player.CharacterAdded:Wait()
+	self:DiedCheck(Player)
+	
+	--> Checking if player died
+	Connections[Player]["Character"] = Player.CharacterAdded:Connect(function()
+		Character = Player.Character
+		self:DiedCheck(Player)
+	end)
+	
+	--> Leveling up the player & giving rewards
+	Connections[Player]["Level"] = Leaderstats.Bones.Changed:Connect(function()
+		if Leaderstats.Bones.Value >= Serverstats.RequiredBones.Value then
+			Leaderstats.Level.Value += 1
+			Serverstats.RequiredBones.Value = math.floor(100*(Leaderstats.Level.Value^3))
+			
+			local Reward = LevelInfo[Leaderstats.Level.Value].Reward
+			
+			if Reward then
+				local Chest = game.ReplicatedStorage.Chests:FindFirstChild(Reward)
+				local MyChest = Player.playerstats.Chests:FindFirstChild(Reward)
+				
+				if Chest and MyChest then
+					MyChest.Value += 1
+				end
+			end
+		end
+	end)
+end
+
+--> Creating new connection for new character
+function Class:DiedCheck(Player)
+	if Connections[Player]["Died"] then
+		Connections[Player]["Died"]:Disconnect()
+	end
+	
+	Connections[Player]["Died"] = Player.Character.Humanoid.HealthChanged:Connect(function()
+		if Player.Character.Humanoid.Health <= 0 then
+			Player.serverstats.Run.Value = false
+		end
+	end)
+end
+
+--> Removing connections when player leaves
+function Class:Removing(Player)
+	if Connections[Player] then
+		for _, Connection in Connections[Player] do
+			Connection:Disconnect()
+		end
+		
+		Connections[Player] = nil
+	end
+end
+
+return Class
