@@ -1,0 +1,103 @@
+local Class = {}
+Class.__index = Class
+setmetatable({}, Class)
+
+local DataStore = game:GetService("DataStoreService"):GetDataStore("GameData")
+local PlayerData = {}
+
+--> Loading Player Data
+function Class.Load(Player)
+	
+	local Data
+	local Success, Failed = pcall(function()
+		Data = DataStore:GetAsync(`p{Player.UserId}`)
+	end)
+	
+	if Success then
+		PlayerData[Player] = Data
+		
+		local Leaderstats = Data.leaderstats
+		local Playerstats = Data.playerstats
+
+		for StatName, StatValue in Leaderstats do
+			local Current = Player.leaderstats:FindFirstChild(StatName)
+			
+			if Current then
+				Current.Value = StatValue
+			end
+		end
+		
+		for FolderName, FolderArray in Playerstats do
+			local CurrentFolder = Player.playerstats:FindFirstChild(FolderName)
+			
+			if CurrentFolder then
+				for StatName, StatValue in FolderArray do
+					local CurrentStat = CurrentFolder:FindFirstChild(StatName)
+					
+					if typeof(StatValue) == "table" then
+						local Attributes = StatValue["Attributes"]
+						
+						if Attributes and typeof(Attributes) == "table" then
+							local Config = Instance.new("Configuration")
+							Config.Name = StatValue.Object
+							Config.Parent = CurrentFolder
+							
+							for Attribute, Set in Attributes do
+								Config:SetAttribute(tostring(Attribute), Set)
+							end
+						end
+					else
+						if CurrentStat then
+							CurrentStat.Value = StatValue
+						end
+					end
+				end
+			end
+		end
+	else
+		warn(Failed)
+	end
+end
+
+--> Saving Player Data
+function Class.Save(Player)
+	local Data = {leaderstats = {};playerstats = {}}
+	
+	local Leaderstats = Player.leaderstats
+	local Playerstats = Player.playerstats
+	
+	--> Saving leaderstats
+	for _, Object in Leaderstats:GetChildren() do
+		Data.leaderstats[Object.Name] = Object.Value
+	end	
+	
+	--> Saving playerstats in different sections
+	for _, Folder in Playerstats:GetChildren() do
+		Data.playerstats[Folder.Name] = {}
+		
+		for _, Object in Folder:GetChildren() do
+			if Object:IsA("Configuration") then
+				local Info = {
+					Object = Object.Name;
+					Attributes = Object:GetAttributes();
+				}
+				
+				table.insert(Data.playerstats[Folder.Name], Info)
+			else
+				Data.playerstats[Folder.Name][Object.Name] = Object.Value
+			end
+		end
+	end
+	
+	--> Saving Data
+	local Success, Failed = pcall(function()
+		DataStore:SetAsync(`p{Player.UserId}`, Data)
+	end)
+	
+	--> Warn error
+	if Failed then
+		warn(Failed)
+	end
+end
+
+return Class
