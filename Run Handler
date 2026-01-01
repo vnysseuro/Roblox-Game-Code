@@ -1,0 +1,16 @@
+local Class = {}
+Class.__index = Class
+
+--> Change Values when player starts the run
+function Class.Start(Player)
+	Player.serverstats.Run.Value = true
+end
+
+--> Change Values when player ends the run
+function Class.End(Player)
+	Player.serverstats.Run.Value = false
+	Player.leaderstats.Bones.Value = 0
+	Player.leaderstats.Level.Value = 1
+end
+
+return Class
