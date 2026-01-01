@@ -1,0 +1,24 @@
+local Players = game:FindService("Players") or game:GetService("Players")
+local PlayerInit = require(game.ServerScriptService.Classes.PlayerInit)
+local DataHandler = require(game.ServerScriptService.Classes.DataHandler)
+local BackpackHandler = require(game.ServerScriptService.Classes.BackpackHandler)
+
+--> Adding starter items when player joins
+Players.PlayerAdded:Connect(function(Player)
+	PlayerInit:Setup(Player)
+	DataHandler.Load(Player)
+	BackpackHandler:EquipBestWeapon(Player)
+	BackpackHandler:CreateSwordToEquip(Player, Player.serverstats.EquippedWeapon.Value)
+end)
+
+--> Saving data when player leave
+Players.PlayerRemoving:Connect(function(Player)
+	DataHandler.Save(Player)
+end)
+
+--> When game shutdowns save the data
+game:BindToClose(function()
+	for _, Player in Players:GetPlayers() do
+		DataHandler.Save(Player)
+	end
+end)
