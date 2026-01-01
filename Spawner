@@ -1,0 +1,13 @@
+local Players = game:FindService("Players") or game:GetService("Players")
+local Chests = require(game.ServerScriptService.Classes.ChestsHandler)
+local Bones = require(game.ServerScriptService.Classes.BonesHandler)
+
+Bones:Initialize()
+
+game.ReplicatedStorage.SpawnCache.ChildAdded:Connect(function(Object)
+	Bones:Respawn(Object)
+end)
+
+while task.wait(1) do
+	Chests:Spawn()
+end
