@@ -1,0 +1,23 @@
+local Class = {}
+Class.__index = Class
+setmetatable({}, Class)
+
+function Class:GetRandomItem(Array)
+	local TotalPercent = 0
+	for _, Item in Array do
+		TotalPercent += Item.Percent
+	end
+	
+	local Chance = math.random(1, TotalPercent)
+	local Counter = 0
+	for _, Item in Array do
+		Counter += Item.Percent
+		if Chance <= Counter then
+			return Item
+		end
+	end
+	
+	return "Error"
+end
+
+return Class
